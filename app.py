@@ -2,11 +2,13 @@ import io
 import os
 import re
 import sqlite3
+from functools import wraps
 import qrcode
 import pandas as pd
 from datetime import date, datetime
 from dotenv import load_dotenv
-from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, flash
+from flask import (Flask, render_template, request, redirect, url_for,
+                   jsonify, send_file, flash, session, g)
 from database import init_db, get_connection
 from email_service import send_registration_email
 
@@ -21,6 +23,45 @@ os.makedirs(QRCODE_DIR, exist_ok=True)
 
 with app.app_context():
     init_db()
+
+# ── Auth ───────────────────────────────────────────────────────────────────────
+
+@app.before_request
+def load_auth():
+    # Expose auth state to every template via g (avoids name collision with
+    # db 'session' rows that some views pass as template variables)
+    g.authenticated = session.get('authenticated', False)
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('authenticated'):
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if session.get('authenticated'):
+        return redirect(url_for('index'))
+    error = None
+    if request.method == 'POST':
+        entered   = request.form.get('password', '').strip()
+        correct   = os.environ.get('TRAINER_PASSWORD', '')
+        if not correct:
+            error = 'Server error: TRAINER_PASSWORD is not configured.'
+        elif entered == correct:
+            session.clear()
+            session['authenticated'] = True
+            return redirect(url_for('index'))
+        else:
+            error = 'Incorrect password. Please try again.'
+    return render_template('login.html', error=error)
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -51,10 +92,11 @@ def generate_register_qr(base_url):
 # ── Home ───────────────────────────────────────────────────────────────────────
 
 @app.route('/')
+@login_required
 def index():
     return render_template('index.html')
 
-# ── Student Registration Form ──────────────────────────────────────────────────
+# ── Student Registration Form (PUBLIC – accessed via QR code) ─────────────────
 
 @app.route('/student-register', methods=['GET'])
 def student_register_form():
@@ -107,10 +149,12 @@ def registration_success():
 # ── Add Student (trainer manual entry) ────────────────────────────────────────
 
 @app.route('/add-student', methods=['GET'])
+@login_required
 def add_student_form():
     return render_template('add_student.html')
 
 @app.route('/add-student', methods=['POST'])
+@login_required
 def add_student_submit():
     name        = request.form.get('name',        '').strip()
     mobile      = request.form.get('mobile',      '').strip()
@@ -154,6 +198,7 @@ def _load_sessions(cursor):
     return cursor.fetchall()
 
 @app.route('/manual-attendance', methods=['GET'])
+@login_required
 def manual_attendance_form():
     conn   = get_connection()
     cursor = conn.cursor()
@@ -162,6 +207,7 @@ def manual_attendance_form():
     return render_template('manual_attendance.html', sessions=sessions)
 
 @app.route('/manual-attendance', methods=['POST'])
+@login_required
 def manual_attendance_submit():
     session_id = request.form.get('session_id', type=int)
     mobile     = request.form.get('mobile', '').strip()
@@ -188,8 +234,8 @@ def manual_attendance_submit():
         return rerender(error_mobile='Student not found. Please register them first.')
 
     cursor.execute('SELECT * FROM sessions WHERE id = ?', (session_id,))
-    session = cursor.fetchone()
-    if not session:
+    db_session = cursor.fetchone()
+    if not db_session:
         return rerender(error_session='Selected session does not exist.')
 
     cursor.execute(
@@ -208,12 +254,13 @@ def manual_attendance_submit():
     conn.commit()
     conn.close()
 
-    flash(f"{student['name']} marked present for {session['session_name']}")
+    flash(f"{student['name']} marked present for {db_session['session_name']}")
     return redirect(url_for('manual_attendance_form'))
 
 # ── Register Student QR ────────────────────────────────────────────────────────
 
 @app.route('/register-student-qr')
+@login_required
 def register_student_qr():
     qr_path = generate_register_qr(request.url_root)
     return render_template('register_student_qr.html', qr_path=qr_path)
@@ -221,10 +268,12 @@ def register_student_qr():
 # ── Start Session ──────────────────────────────────────────────────────────────
 
 @app.route('/start-session', methods=['GET'])
+@login_required
 def start_session_form():
     return render_template('start_session.html', today=date.today().isoformat())
 
 @app.route('/start-session', methods=['POST'])
+@login_required
 def start_session_submit():
     session_name = request.form['session_name'].strip()
     session_date = request.form['date']
@@ -247,24 +296,25 @@ def start_session_submit():
 SESSION_DURATION = 600  # 10 minutes in seconds
 
 @app.route('/active-session/<int:session_id>')
+@login_required
 def active_session(session_id):
     conn   = get_connection()
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM sessions WHERE id = ?', (session_id,))
-    session = cursor.fetchone()
+    db_session = cursor.fetchone()
     conn.close()
 
-    if session is None:
+    if db_session is None:
         return 'Session not found', 404
 
-    start_time        = datetime.fromisoformat(session['start_time'])
+    start_time        = datetime.fromisoformat(db_session['start_time'])
     elapsed           = (datetime.now() - start_time).total_seconds()
     seconds_remaining = max(0, int(SESSION_DURATION - elapsed))
     qr_path           = generate_qr(session_id, request.url_root)
 
     return render_template(
         'active_session.html',
-        session=session,
+        session=db_session,
         qr_path=qr_path,
         seconds_remaining=seconds_remaining,
     )
@@ -272,6 +322,7 @@ def active_session(session_id):
 # ── Attendance Feed (JSON) ─────────────────────────────────────────────────────
 
 @app.route('/attendance-feed/<int:session_id>')
+@login_required
 def attendance_feed(session_id):
     conn   = get_connection()
     cursor = conn.cursor()
@@ -288,7 +339,7 @@ def attendance_feed(session_id):
     conn.close()
     return jsonify(rows)
 
-# ── Mark Attendance ────────────────────────────────────────────────────────────
+# ── Mark Attendance (PUBLIC – accessed via QR code) ───────────────────────────
 
 def _error(title, message):
     return render_template('attendance_success.html',
@@ -299,14 +350,14 @@ def _get_live_session(session_id):
     conn   = get_connection()
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM sessions WHERE id = ?', (session_id,))
-    session = cursor.fetchone()
+    db_session = cursor.fetchone()
     conn.close()
-    if session is None:
+    if db_session is None:
         return None, 'Session not found'
-    elapsed = (datetime.now() - datetime.fromisoformat(session['start_time'])).total_seconds()
+    elapsed = (datetime.now() - datetime.fromisoformat(db_session['start_time'])).total_seconds()
     if elapsed > SESSION_DURATION:
         return None, 'Session has expired'
-    return session, None
+    return db_session, None
 
 @app.route('/mark-attendance', methods=['GET'])
 def mark_attendance_form():
@@ -314,11 +365,11 @@ def mark_attendance_form():
     if not session_id:
         return _error('Invalid Link', 'This QR code link is invalid.')
 
-    session, err = _get_live_session(session_id)
+    db_session, err = _get_live_session(session_id)
     if err:
         return _error('Session Expired' if 'expired' in err else 'Not Found', err)
 
-    return render_template('mark_attendance.html', session=session)
+    return render_template('mark_attendance.html', session=db_session)
 
 @app.route('/mark-attendance', methods=['POST'])
 def mark_attendance_submit():
@@ -328,7 +379,7 @@ def mark_attendance_submit():
     if not mobile.isdigit() or len(mobile) != 10:
         return _error('Invalid Mobile', 'Please enter a valid 10-digit mobile number.')
 
-    session, err = _get_live_session(session_id)
+    db_session, err = _get_live_session(session_id)
     if err:
         return _error('Session Expired' if 'expired' in err else 'Not Found', err)
 
@@ -353,7 +404,7 @@ def mark_attendance_submit():
             'attendance_success.html',
             status='success',
             title='Attendance Marked',
-            message=f"{student['name']} has attended {session['session_name']}",
+            message=f"{student['name']} has attended {db_session['session_name']}",
         )
     except sqlite3.IntegrityError:
         conn.close()
@@ -363,6 +414,7 @@ def mark_attendance_submit():
 # ── View Attendance ────────────────────────────────────────────────────────────
 
 @app.route('/view-attendance')
+@login_required
 def view_attendance():
     conn   = get_connection()
     cursor = conn.cursor()
@@ -382,13 +434,14 @@ def view_attendance():
     return render_template('view_attendance.html', sessions=sessions)
 
 @app.route('/view-attendance/<int:session_id>')
+@login_required
 def session_detail(session_id):
     conn   = get_connection()
     cursor = conn.cursor()
 
     cursor.execute('SELECT * FROM sessions WHERE id = ?', (session_id,))
-    session = cursor.fetchone()
-    if session is None:
+    db_session = cursor.fetchone()
+    if db_session is None:
         conn.close()
         return 'Session not found', 404
 
@@ -417,18 +470,19 @@ def session_detail(session_id):
     conn.close()
 
     return render_template('session_detail.html',
-                           session=session, records=records, absent=absent)
+                           session=db_session, records=records, absent=absent)
 
 # ── Download Excel ─────────────────────────────────────────────────────────────
 
 @app.route('/download-excel/<int:session_id>')
+@login_required
 def download_excel(session_id):
     conn   = get_connection()
     cursor = conn.cursor()
 
     cursor.execute('SELECT * FROM sessions WHERE id = ?', (session_id,))
-    session = cursor.fetchone()
-    if session is None:
+    db_session = cursor.fetchone()
+    if db_session is None:
         conn.close()
         return 'Session not found', 404
 
@@ -458,15 +512,14 @@ def download_excel(session_id):
     with pd.ExcelWriter(buf, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Attendance')
 
-        # Auto-fit column widths
         ws = writer.sheets['Attendance']
         for col in ws.columns:
             max_len = max((len(str(cell.value)) for cell in col if cell.value), default=10)
             ws.column_dimensions[col[0].column_letter].width = min(max_len + 4, 50)
 
     buf.seek(0)
-    safe_name = re.sub(r'[^\w\-]', '_', session['session_name'])
-    filename  = f"attendance_{safe_name}_{session['date']}.xlsx"
+    safe_name = re.sub(r'[^\w\-]', '_', db_session['session_name'])
+    filename  = f"attendance_{safe_name}_{db_session['date']}.xlsx"
 
     return send_file(
         buf,
@@ -478,6 +531,7 @@ def download_excel(session_id):
 # ── View / Delete / Edit Students ─────────────────────────────────────────────
 
 @app.route('/view-students')
+@login_required
 def view_students():
     conn   = get_connection()
     cursor = conn.cursor()
@@ -487,6 +541,7 @@ def view_students():
     return render_template('view_students.html', students=students)
 
 @app.route('/delete-student/<int:student_id>', methods=['POST'])
+@login_required
 def delete_student(student_id):
     conn   = get_connection()
     cursor = conn.cursor()
@@ -501,6 +556,7 @@ def delete_student(student_id):
     return redirect(url_for('view_students'))
 
 @app.route('/edit-student/<int:student_id>', methods=['GET'])
+@login_required
 def edit_student_form(student_id):
     conn    = get_connection()
     cursor  = conn.cursor()
@@ -512,6 +568,7 @@ def edit_student_form(student_id):
     return render_template('edit_student.html', student=student)
 
 @app.route('/edit-student/<int:student_id>', methods=['POST'])
+@login_required
 def edit_student_submit(student_id):
     conn   = get_connection()
     cursor = conn.cursor()
@@ -538,7 +595,6 @@ def edit_student_submit(student_id):
                                student=form_data,
                                error_mobile='Mobile number must be exactly 10 digits.')
 
-    # Uniqueness check — exclude this student's own current mobile
     cursor.execute('SELECT id FROM students WHERE mobile = ? AND id != ?',
                    (mobile, student_id))
     if cursor.fetchone():
@@ -547,7 +603,6 @@ def edit_student_submit(student_id):
                                student=form_data,
                                error_mobile='Mobile number already registered to another student.')
 
-    # If mobile changed, update attendance records to keep the FK consistent
     old_mobile = current['mobile']
     if mobile != old_mobile:
         cursor.execute('UPDATE attendance SET student_mobile = ? WHERE student_mobile = ?',

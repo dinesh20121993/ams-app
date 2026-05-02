@@ -1091,3 +1091,27 @@ h1 {
 .section-count-absent {
   background: #ef4444;
 }
+
+/* ── Logout nav link ── */
+.nav-logout {
+  color: #fc8181 !important;
+  margin-left: 8px;
+}
+
+.nav-logout:hover {
+  color: #fecaca !important;
+  background: rgba(239, 68, 68, 0.12) !important;
+}
+
+/* ── Login card ── */
+.login-card {
+  max-width: 380px;
+}
+
+.login-logo {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #3b82f6;
+  letter-spacing: 0.14em;
+  margin-bottom: 12px;
+}

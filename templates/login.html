@@ -1,0 +1,29 @@
+{% extends 'base_student.html' %}
+
+{% block title %}Login — AMS{% endblock %}
+
+{% block content %}
+<div class="card login-card">
+  <div class="login-logo">AMS</div>
+  <h1>Trainer Login</h1>
+  <p class="subtitle">Besant Technologies</p>
+
+  {% if error %}
+  <div class="flash-error" style="margin-bottom: 20px;">
+    &#33;&nbsp;{{ error }}
+  </div>
+  {% endif %}
+
+  <form method="POST" action="{{ url_for('login') }}" autocomplete="off">
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password"
+             placeholder="Enter trainer password"
+             autofocus required />
+    </div>
+    <button type="submit" class="btn btn-primary" style="width:100%; border:none; cursor:pointer; font-family:inherit; font-size:1rem;">
+      Login
+    </button>
+  </form>
+</div>
+{% endblock %}

@@ -21,6 +21,9 @@
          class="nav-link{% if request.endpoint in ['view_students','edit_student_form','add_student_form'] %} active{% endif %}">View Students</a>
       <a href="{{ url_for('view_attendance') }}"
          class="nav-link{% if request.endpoint in ['view_attendance','session_detail','download_excel'] %} active{% endif %}">View Attendance</a>
+      {% if g.authenticated %}
+      <a href="{{ url_for('logout') }}" class="nav-link nav-logout">Logout</a>
+      {% endif %}
     </div>
   </nav>
 
