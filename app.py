@@ -1,4 +1,5 @@
 import io
+import logging
 import os
 import re
 import sqlite3
@@ -14,8 +15,12 @@ from email_service import send_registration_email
 
 load_dotenv()
 
+TRAINER_PASSWORD = os.environ.get('TRAINER_PASSWORD', '')
+if not TRAINER_PASSWORD:
+    logging.warning('TRAINER_PASSWORD is not set — trainer login will be unavailable')
+
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'ams-dev-secret-key')
+app.secret_key = os.environ.get('SECRET_KEY', 'fallback-dev-key-change-in-prod')
 
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 QRCODE_DIR = os.path.join(BASE_DIR, 'static', 'qrcodes')
@@ -46,11 +51,10 @@ def login():
         return redirect(url_for('index'))
     error = None
     if request.method == 'POST':
-        entered   = request.form.get('password', '').strip()
-        correct   = os.environ.get('TRAINER_PASSWORD', '')
-        if not correct:
-            error = 'Server error: TRAINER_PASSWORD is not configured.'
-        elif entered == correct:
+        entered = request.form.get('password', '').strip()
+        if not TRAINER_PASSWORD:
+            error = 'App is not configured correctly. Please contact the administrator.'
+        elif entered == TRAINER_PASSWORD:
             session.clear()
             session['authenticated'] = True
             return redirect(url_for('index'))
