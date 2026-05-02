@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% block title %}Edit Student – AMS{% endblock %}
+
+{% block content %}
+<div class="card admin-card">
+
+  <div class="admin-card-header">
+    <div>
+      <span class="admin-badge">Trainer</span>
+      <h1>Edit Student</h1>
+    </div>
+    <a href="{{ url_for('view_students') }}" class="admin-back-link">&#8592; Students</a>
+  </div>
+
+  <div class="admin-card-body">
+    <form id="edit-form" method="POST"
+          action="{{ url_for('edit_student_submit', student_id=student['id']) }}"
+          novalidate>
+
+      <div class="form-group">
+        <label for="name">Full Name <span class="req">*</span></label>
+        <input type="text" id="name" name="name"
+               value="{{ student['name'] }}"
+               placeholder="Student's full name"
+               autocomplete="off" />
+      </div>
+
+      <div class="form-group">
+        <label for="mobile">Mobile Number <span class="req">*</span></label>
+        <input type="tel" id="mobile" name="mobile"
+               value="{{ student['mobile'] }}"
+               placeholder="10-digit mobile number"
+               maxlength="10" inputmode="numeric"
+               class="{{ 'is-invalid' if error_mobile else '' }}" />
+        {% if error_mobile %}
+        <span class="field-error">{{ error_mobile }}</span>
+        {% endif %}
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email Address <span class="req">*</span></label>
+        <input type="email" id="email" name="email"
+               value="{{ student['email'] or '' }}"
+               placeholder="student@example.com"
+               autocomplete="off" />
+      </div>
+
+      <div class="form-group">
+        <label for="gender">Gender <span class="req">*</span></label>
+        <select id="gender" name="gender">
+          <option value="">Select gender</option>
+          <option value="Male"
+            {{ 'selected' if student['gender'] == 'Male' }}>Male</option>
+          <option value="Female"
+            {{ 'selected' if student['gender'] == 'Female' }}>Female</option>
+          <option value="Prefer not to say"
+            {{ 'selected' if student['gender'] == 'Prefer not to say' }}>
+            Prefer not to say</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="course_name">Course Name <span class="req">*</span></label>
+        <input type="text" id="course_name" name="course_name"
+               value="{{ student['course_name'] or '' }}"
+               placeholder="e.g. Python Programming" />
+      </div>
+
+      <div class="form-group">
+        <label for="batch_name">Batch Name <span class="req">*</span></label>
+        <input type="text" id="batch_name" name="batch_name"
+               value="{{ student['batch_name'] or '' }}"
+               placeholder="e.g. Batch 12 – Morning" />
+      </div>
+
+      <div class="edit-actions">
+        <button type="submit" class="btn admin-btn-submit edit-btn-save">
+          &#10003; Save Changes
+        </button>
+        <a href="{{ url_for('view_students') }}"
+           class="btn btn-secondary edit-btn-cancel">
+          Cancel
+        </a>
+      </div>
+
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const form = document.getElementById('edit-form');
+
+  form.querySelectorAll('input, select').forEach(el => {
+    el.addEventListener('input',  () => clearErr(el));
+    el.addEventListener('change', () => clearErr(el));
+  });
+
+  function clearErr(el) {
+    el.classList.remove('is-invalid');
+    const e = el.parentNode.querySelector('.field-error');
+    if (e) e.remove();
+  }
+
+  function markErr(el, msg) {
+    el.classList.add('is-invalid');
+    if (!el.parentNode.querySelector('.field-error')) {
+      const s = document.createElement('span');
+      s.className = 'field-error';
+      s.textContent = msg;
+      el.parentNode.appendChild(s);
+    }
+  }
+
+  form.addEventListener('submit', function (e) {
+    form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+    form.querySelectorAll('.field-error').forEach(el => el.remove());
+
+    let first = null;
+    const required = [
+      [document.getElementById('name'),        v => !v.trim(), 'Full name is required'],
+      [document.getElementById('email'),       v => !v.trim(), 'Email is required'],
+      [document.getElementById('gender'),      v => !v,        'Please select a gender'],
+      [document.getElementById('course_name'), v => !v.trim(), 'Course name is required'],
+      [document.getElementById('batch_name'),  v => !v.trim(), 'Batch name is required'],
+    ];
+    const mobile = document.getElementById('mobile');
+    if (!/^\d{10}$/.test(mobile.value.trim())) {
+      markErr(mobile, 'Mobile number must be exactly 10 digits');
+      first = first || mobile;
+    }
+    for (const [el, bad, msg] of required) {
+      if (bad(el.value)) { markErr(el, msg); first = first || el; }
+    }
+    if (first) { e.preventDefault(); first.focus(); }
+  });
+</script>
+{% endblock %}

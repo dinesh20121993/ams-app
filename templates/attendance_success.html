@@ -1,0 +1,15 @@
+{% extends 'base_student.html' %}
+{% block title %}{{ title }} – AMS{% endblock %}
+
+{% block content %}
+<div class="card status-card status-{{ status }}">
+
+  <div class="status-icon">
+    {% if status == 'success' %}&#10003;{% else %}&#33;{% endif %}
+  </div>
+
+  <h1>{{ title }}</h1>
+  <p class="status-message">{{ message }}</p>
+
+</div>
+{% endblock %}

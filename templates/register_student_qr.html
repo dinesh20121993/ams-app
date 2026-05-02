@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Student Registration QR – AMS{% endblock %}
+
+{% block content %}
+<div class="card reg-qr-card">
+  <a href="{{ url_for('index') }}" class="back-link">&#8592; Home</a>
+
+  <h1>Student Registration QR Code</h1>
+  <p class="subtitle">Share this with new students</p>
+
+  <div class="reg-qr-wrapper">
+    <img src="{{ url_for('static', filename=qr_path) }}"
+         alt="Student Registration QR Code"
+         class="reg-qr-img" />
+  </div>
+
+  <p class="reg-qr-note">
+    Ask students to scan this QR code to register
+  </p>
+
+  <a href="{{ url_for('index') }}" class="btn btn-secondary" style="margin-top:24px;">
+    &#8592; Back to Home
+  </a>
+</div>
+{% endblock %}

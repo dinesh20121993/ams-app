@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}AMS{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+
+  <!-- ── Navigation ── -->
+  <nav class="site-nav">
+    <a href="{{ url_for('index') }}" class="nav-brand">AMS</a>
+    <button class="nav-toggle" id="nav-toggle" aria-label="Open menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="nav-links" id="nav-links">
+      <a href="{{ url_for('index') }}"
+         class="nav-link{% if request.endpoint == 'index' %} active{% endif %}">Home</a>
+      <a href="{{ url_for('view_students') }}"
+         class="nav-link{% if request.endpoint in ['view_students','edit_student_form','add_student_form'] %} active{% endif %}">View Students</a>
+      <a href="{{ url_for('view_attendance') }}"
+         class="nav-link{% if request.endpoint in ['view_attendance','session_detail','download_excel'] %} active{% endif %}">View Attendance</a>
+    </div>
+  </nav>
+
+  <!-- ── Flash messages ── -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="global-flash">
+    {% for category, message in messages %}
+    <div class="flash-{{ 'error' if category == 'error' else 'success' }}">
+      {% if category == 'error' %}&#33;{% else %}&#10003;{% endif %}&nbsp;{{ message }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <!-- ── Main content ── -->
+  <main class="site-main {% block main_class %}{% endblock %}">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- ── Footer ── -->
+  <footer class="site-footer">
+    Besant Technologies &copy; 2025
+  </footer>
+
+  <script>
+    const navToggle = document.getElementById('nav-toggle');
+    const navLinks  = document.getElementById('nav-links');
+    navToggle.addEventListener('click', () => {
+      navLinks.classList.toggle('open');
+      navToggle.classList.toggle('open');
+    });
+    document.addEventListener('click', (e) => {
+      if (!navToggle.contains(e.target) && !navLinks.contains(e.target)) {
+        navLinks.classList.remove('open');
+        navToggle.classList.remove('open');
+      }
+    });
+  </script>
+  {% block scripts %}{% endblock %}
+
+</body>
+</html>

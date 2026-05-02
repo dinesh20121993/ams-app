@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}Attendance Records – AMS{% endblock %}
+{% block main_class %}wide-main{% endblock %}
+
+{% block content %}
+<div class="session-container">
+
+  <div class="detail-header">
+    <div>
+      <a href="{{ url_for('index') }}" class="back-link">&#8592; Home</a>
+      <h1>Attendance Records</h1>
+      <p class="header-sub">
+        {{ sessions | length }} session{{ 's' if sessions | length != 1 }}
+      </p>
+    </div>
+    <a href="{{ url_for('start_session_form') }}" class="btn btn-primary download-btn">
+      &#43; New Session
+    </a>
+  </div>
+
+  {% if sessions %}
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Session Name</th>
+          <th>Date</th>
+          <th>Total Present</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sess in sessions %}
+        <tr>
+          <td class="col-num">{{ loop.index }}</td>
+          <td class="col-name">{{ sess['session_name'] }}</td>
+          <td class="col-mono">{{ sess['date'] }}</td>
+          <td>
+            <span class="count-badge">{{ sess['attendee_count'] }}</span>
+          </td>
+          <td class="actions-cell">
+            <a href="{{ url_for('session_detail', session_id=sess['id']) }}"
+               class="btn-action btn-action-edit">View Details</a>
+            <a href="{{ url_for('download_excel', session_id=sess['id']) }}"
+               class="btn-action btn-action-download">&#8659; Excel</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-msg">
+    <p>No sessions yet.</p>
+    <a href="{{ url_for('start_session_form') }}"
+       class="btn btn-primary" style="display:inline-block;margin-top:16px;">
+      Start your first session
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

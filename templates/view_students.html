@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% block title %}View Students – AMS{% endblock %}
+{% block main_class %}wide-main{% endblock %}
+
+{% block content %}
+<div class="session-container">
+
+  <div class="detail-header">
+    <div>
+      <a href="{{ url_for('index') }}" class="back-link">&#8592; Home</a>
+      <h1>Registered Students</h1>
+      <p class="header-sub">
+        Total: <strong id="visible-count">{{ students | length }}</strong>
+        student{{ 's' if students | length != 1 }}
+      </p>
+    </div>
+    <a href="{{ url_for('add_student_form') }}" class="btn btn-primary download-btn">
+      &#43; Add Student
+    </a>
+  </div>
+
+  {% if students %}
+
+  <div class="search-wrapper">
+    <input type="text" id="search" class="search-input"
+           placeholder="Search by name, mobile, email or batch&hellip;"
+           autocomplete="off" />
+  </div>
+
+  <div class="table-wrapper">
+    <table class="data-table" id="student-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th class="sortable" data-col="1">Name <span class="sort-icon"></span></th>
+          <th>Mobile</th>
+          <th>Email</th>
+          <th>Gender</th>
+          <th>Course</th>
+          <th class="sortable" data-col="6">Batch <span class="sort-icon"></span></th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for st in students %}
+        <tr>
+          <td class="col-num">{{ loop.index }}</td>
+          <td class="col-name">{{ st['name'] }}</td>
+          <td class="col-mono">{{ st['mobile'] }}</td>
+          <td>{{ st['email'] if st['email'] else '—' }}</td>
+          <td>{{ st['gender'] if st['gender'] else '—' }}</td>
+          <td>{{ st['course_name'] if st['course_name'] else '—' }}</td>
+          <td>{{ st['batch_name'] if st['batch_name'] else '—' }}</td>
+          <td class="actions-cell">
+            <a href="{{ url_for('edit_student_form', student_id=st['id']) }}"
+               class="btn-action btn-action-edit">Edit</a>
+            <form method="POST"
+                  action="{{ url_for('delete_student', student_id=st['id']) }}"
+                  class="delete-form"
+                  data-name="{{ st['name'] }}"
+                  style="display:inline;">
+              <button type="submit" class="btn-action btn-action-delete">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <p class="no-results" id="no-results" style="display:none;">
+    No students match your search.
+  </p>
+
+  {% else %}
+
+  <div class="empty-msg">
+    <p>No students registered yet.</p>
+    <a href="{{ url_for('add_student_form') }}"
+       class="btn btn-primary" style="display:inline-block;margin-top:16px;">
+      Add your first student
+    </a>
+  </div>
+
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.querySelectorAll('.delete-form').forEach(form => {
+    form.addEventListener('submit', function (e) {
+      const name = this.dataset.name;
+      if (!confirm(`Delete "${name}"?\n\nThis action cannot be undone.`)) {
+        e.preventDefault();
+      }
+    });
+  });
+
+  const searchInput  = document.getElementById('search');
+  const noResults    = document.getElementById('no-results');
+  const visibleCount = document.getElementById('visible-count');
+
+  if (searchInput) {
+    function applySearch() {
+      const q    = searchInput.value.trim().toLowerCase();
+      const rows = document.querySelectorAll('#student-table tbody tr');
+      let n = 0;
+      rows.forEach(row => {
+        const match = !q || row.textContent.toLowerCase().includes(q);
+        row.style.display = match ? '' : 'none';
+        if (match) n++;
+      });
+      visibleCount.textContent = n;
+      noResults.style.display  = (n === 0 && q) ? '' : 'none';
+    }
+    searchInput.addEventListener('input', applySearch);
+  }
+
+  let sortCol = -1, sortAsc = true;
+  document.querySelectorAll('.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = parseInt(th.dataset.col);
+      sortAsc = (sortCol === col) ? !sortAsc : true;
+      sortCol = col;
+      document.querySelectorAll('.sortable').forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
+      th.classList.add(sortAsc ? 'sort-asc' : 'sort-desc');
+      const tbody = document.querySelector('#student-table tbody');
+      Array.from(tbody.querySelectorAll('tr'))
+        .sort((a, b) => {
+          const va = a.cells[col].textContent.trim().toLowerCase();
+          const vb = b.cells[col].textContent.trim().toLowerCase();
+          return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+        })
+        .forEach(row => tbody.appendChild(row));
+      let i = 1;
+      tbody.querySelectorAll('tr').forEach(row => {
+        if (row.style.display !== 'none') row.cells[0].textContent = i++;
+      });
+    });
+  });
+</script>
+{% endblock %}

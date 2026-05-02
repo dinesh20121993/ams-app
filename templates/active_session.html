@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block title %}{{ session['session_name'] }} – AMS{% endblock %}
+{% block main_class %}wide-main{% endblock %}
+
+{% block content %}
+<div class="session-container">
+
+  <div class="session-header">
+    <h1>{{ session['session_name'] }}</h1>
+    <p class="subtitle">{{ session['date'] }}</p>
+  </div>
+
+  <div class="session-body">
+
+    <!-- ── QR Panel ── -->
+    <div class="qr-panel">
+      <div class="qr-wrapper" id="qr-wrapper">
+        <img src="{{ url_for('static', filename=qr_path) }}"
+             alt="Attendance QR Code" />
+        <div class="qr-closed-overlay" id="qr-overlay">
+          &#128683; Session Closed
+        </div>
+      </div>
+      <p class="scan-hint">Scan with your phone to mark attendance</p>
+      <div class="timer" id="timer">10:00</div>
+      <p class="timer-label" id="timer-label">Time remaining</p>
+    </div>
+
+    <!-- ── Attendance Panel ── -->
+    <div class="attendance-panel">
+      <div class="attendance-header">
+        <h2>Live Attendance</h2>
+        <span class="count-badge" id="count">0</span>
+      </div>
+      <ul class="attendance-list" id="attendance-list">
+        <li class="empty-state">Waiting for students to scan&hellip;</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <div class="session-footer">
+    <a href="{{ url_for('index') }}" class="btn btn-secondary">&#8592; Home</a>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const SESSION_ID = {{ session['id'] }};
+  let remaining    = {{ seconds_remaining }};
+  let pollInterval = null;
+
+  const timerEl   = document.getElementById('timer');
+  const labelEl   = document.getElementById('timer-label');
+  const wrapperEl = document.getElementById('qr-wrapper');
+  const countEl   = document.getElementById('count');
+  const listEl    = document.getElementById('attendance-list');
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function fmt(s) { return `${pad(Math.floor(s / 60))}:${pad(s % 60)}`; }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function closeSession() {
+    timerEl.textContent = '00:00';
+    timerEl.classList.add('expired');
+    labelEl.textContent = 'Session closed';
+    wrapperEl.classList.add('closed');
+    if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+  }
+
+  if (remaining <= 0) {
+    closeSession();
+  } else {
+    timerEl.textContent = fmt(remaining);
+    const countdown = setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 60) timerEl.classList.add('warning');
+      if (remaining <= 0)  { clearInterval(countdown); closeSession(); return; }
+      timerEl.textContent = fmt(remaining);
+    }, 1000);
+  }
+
+  async function fetchAttendance() {
+    try {
+      const res  = await fetch(`/attendance-feed/${SESSION_ID}`);
+      const data = await res.json();
+      countEl.textContent = data.length;
+      if (data.length === 0) {
+        listEl.innerHTML = '<li class="empty-state">Waiting for students to scan&hellip;</li>';
+        return;
+      }
+      listEl.innerHTML = data.map((row, i) => `
+        <li class="attendance-item">
+          <span class="attendance-num">${i + 1}</span>
+          <div class="attendance-info">
+            <span class="attendance-name">${escapeHtml(row.name)}</span>
+            <span class="attendance-time">${escapeHtml(row.timestamp)}</span>
+          </div>
+        </li>
+      `).join('');
+    } catch (err) {
+      console.error('Attendance feed error:', err);
+    }
+  }
+
+  fetchAttendance();
+  if (remaining > 0) {
+    pollInterval = setInterval(fetchAttendance, 5000);
+  }
+</script>
+{% endblock %}

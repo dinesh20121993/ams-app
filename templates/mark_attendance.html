@@ -1,0 +1,29 @@
+{% extends 'base_student.html' %}
+{% block title %}Mark Attendance – AMS{% endblock %}
+
+{% block content %}
+<div class="card">
+  <span class="session-badge">{{ session['session_name'] }}</span>
+  <h1>Mark Attendance</h1>
+  <p class="subtitle">{{ session['date'] }}</p>
+
+  <form method="POST" action="{{ url_for('mark_attendance_submit') }}">
+    <input type="hidden" name="session_id" value="{{ session['id'] }}" />
+
+    <div class="form-group">
+      <label for="mobile">Mobile Number</label>
+      <input type="tel" id="mobile" name="mobile"
+             placeholder="Enter your 10-digit mobile number"
+             pattern="[0-9]{10}"
+             maxlength="10"
+             inputmode="numeric"
+             autocomplete="tel"
+             required autofocus />
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px;">
+      Mark My Attendance
+    </button>
+  </form>
+</div>
+{% endblock %}

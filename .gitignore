@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
+.venv/
+
+# Secrets
+.env
+
+# Database (ephemeral on Render — do not commit)
+ams.db
+
+# Generated QR code images
+static/qrcodes/
+
+# Local dev script
+run.sh
+
+# Claude Code local settings
+.claude/

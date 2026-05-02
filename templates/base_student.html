@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}AMS{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+
+  <!-- ── Flash messages ── -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="global-flash" style="padding-top:16px;">
+    {% for category, message in messages %}
+    <div class="flash-{{ 'error' if category == 'error' else 'success' }}">
+      {% if category == 'error' %}&#33;{% else %}&#10003;{% endif %}&nbsp;{{ message }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <!-- ── Main content ── -->
+  <main class="site-main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- ── Footer ── -->
+  <footer class="site-footer">
+    Besant Technologies &copy; 2025
+  </footer>
+
+  {% block scripts %}{% endblock %}
+
+</body>
+</html>

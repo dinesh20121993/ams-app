@@ -1,0 +1,126 @@
+{% extends 'base_student.html' %}
+{% block title %}Student Registration – AMS{% endblock %}
+
+{% block content %}
+<div class="card reg-form-card">
+  <h1>Student Registration</h1>
+  <p class="subtitle">Fill in your details below</p>
+
+  <form id="reg-form" method="POST" action="{{ url_for('student_register_submit') }}" novalidate>
+
+    <div class="form-group">
+      <label for="name">Full Name <span class="req">*</span></label>
+      <input type="text" id="name" name="name"
+             placeholder="Enter your full name"
+             autocomplete="name" />
+    </div>
+
+    <div class="form-group">
+      <label for="mobile">Mobile Number <span class="req">*</span></label>
+      <input type="tel" id="mobile" name="mobile"
+             placeholder="10-digit mobile number"
+             maxlength="10" inputmode="numeric"
+             autocomplete="tel" />
+    </div>
+
+    <div class="form-group">
+      <label for="email">Email Address <span class="req">*</span></label>
+      <input type="email" id="email" name="email"
+             placeholder="you@example.com"
+             autocomplete="email" />
+    </div>
+
+    <div class="form-group">
+      <label for="gender">Gender <span class="req">*</span></label>
+      <select id="gender" name="gender">
+        <option value="">Select gender</option>
+        <option value="Male">Male</option>
+        <option value="Female">Female</option>
+        <option value="Prefer not to say">Prefer not to say</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="course_name">Course Name</label>
+      <input type="text" id="course_name" name="course_name"
+             value="Python Programming" readonly />
+    </div>
+
+    <div class="form-group">
+      <label for="batch_name">Batch Name <span class="req">*</span></label>
+      <input type="text" id="batch_name" name="batch_name"
+             placeholder="e.g. Batch 12 – Morning" />
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px;">
+      Register
+    </button>
+
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const form = document.getElementById('reg-form');
+
+  form.querySelectorAll('input, select').forEach(el => {
+    el.addEventListener('input',  () => clearFieldError(el));
+    el.addEventListener('change', () => clearFieldError(el));
+  });
+
+  function clearFieldError(el) {
+    el.classList.remove('is-invalid');
+    const err = el.parentNode.querySelector('.field-error');
+    if (err) err.remove();
+  }
+
+  function showError(el, msg) {
+    el.classList.add('is-invalid');
+    if (!el.parentNode.querySelector('.field-error')) {
+      const span = document.createElement('span');
+      span.className = 'field-error';
+      span.textContent = msg;
+      el.parentNode.appendChild(span);
+    }
+  }
+
+  form.addEventListener('submit', function (e) {
+    form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+    form.querySelectorAll('.field-error').forEach(el => el.remove());
+
+    let firstInvalid = null;
+    const name   = document.getElementById('name');
+    const mobile = document.getElementById('mobile');
+    const email  = document.getElementById('email');
+    const gender = document.getElementById('gender');
+    const batch  = document.getElementById('batch_name');
+
+    if (!name.value.trim()) {
+      showError(name, 'Full name is required');
+      firstInvalid = firstInvalid || name;
+    }
+    if (!/^\d{10}$/.test(mobile.value.trim())) {
+      showError(mobile, 'Mobile number must be exactly 10 digits');
+      firstInvalid = firstInvalid || mobile;
+    }
+    const emailVal = email.value.trim();
+    if (!emailVal) {
+      showError(email, 'Email address is required');
+      firstInvalid = firstInvalid || email;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+      showError(email, 'Please enter a valid email address');
+      firstInvalid = firstInvalid || email;
+    }
+    if (!gender.value) {
+      showError(gender, 'Please select a gender');
+      firstInvalid = firstInvalid || gender;
+    }
+    if (!batch.value.trim()) {
+      showError(batch, 'Batch name is required');
+      firstInvalid = firstInvalid || batch;
+    }
+    if (firstInvalid) { e.preventDefault(); firstInvalid.focus(); }
+  });
+</script>
+{% endblock %}

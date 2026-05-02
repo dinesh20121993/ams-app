@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block title %}Manual Attendance – AMS{% endblock %}
+
+{% block content %}
+<div class="card admin-card">
+
+  <div class="admin-card-header">
+    <div>
+      <span class="admin-badge">Trainer</span>
+      <h1>Mark Attendance</h1>
+    </div>
+    <a href="{{ url_for('index') }}" class="admin-back-link">&#8592; Home</a>
+  </div>
+
+  <div class="admin-card-body">
+
+    {% if sessions %}
+    <form id="ma-form" method="POST"
+          action="{{ url_for('manual_attendance_submit') }}" novalidate>
+
+      <div class="form-group">
+        <label for="session_id">Session <span class="req">*</span></label>
+        <select id="session_id" name="session_id"
+                class="{{ 'is-invalid' if error_session else '' }}">
+          <option value="">Select a session</option>
+          {% for s in sessions %}
+          <option value="{{ s['id'] }}"
+            {{ 'selected' if form and form['session_id'] == s['id'] }}>
+            {{ s['session_name'] }} &mdash; {{ s['date'] }}
+          </option>
+          {% endfor %}
+        </select>
+        {% if error_session %}
+        <span class="field-error">{{ error_session }}</span>
+        {% endif %}
+      </div>
+
+      <div class="form-group">
+        <label for="mobile">Student Mobile Number <span class="req">*</span></label>
+        <input type="tel" id="mobile" name="mobile"
+               placeholder="10-digit mobile number"
+               value="{{ form['mobile'] if form else '' }}"
+               maxlength="10" inputmode="numeric"
+               class="{{ 'is-invalid' if error_mobile else '' }}" />
+        {% if error_mobile %}
+        <span class="field-error">{{ error_mobile }}</span>
+        {% endif %}
+      </div>
+
+      <button type="submit" class="btn admin-btn-submit">
+        &#9998; Mark Attendance
+      </button>
+
+    </form>
+
+    {% else %}
+    <div class="empty-msg" style="padding:32px 0;">
+      <p>No sessions found.</p>
+      <a href="{{ url_for('start_session_form') }}"
+         class="btn btn-primary" style="display:inline-block;margin-top:16px;">
+        Start a Session
+      </a>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const form = document.getElementById('ma-form');
+  if (form) {
+    [document.getElementById('session_id'),
+     document.getElementById('mobile')].forEach(el => {
+      el.addEventListener('input',  () => clearErr(el));
+      el.addEventListener('change', () => clearErr(el));
+    });
+
+    function clearErr(el) {
+      el.classList.remove('is-invalid');
+      const e = el.parentNode.querySelector('.field-error');
+      if (e) e.remove();
+    }
+
+    function markErr(el, msg) {
+      el.classList.add('is-invalid');
+      if (!el.parentNode.querySelector('.field-error')) {
+        const s = document.createElement('span');
+        s.className = 'field-error';
+        s.textContent = msg;
+        el.parentNode.appendChild(s);
+      }
+    }
+
+    form.addEventListener('submit', function (e) {
+      form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+      form.querySelectorAll('.field-error').forEach(el => el.remove());
+
+      let first = null;
+      const sess   = document.getElementById('session_id');
+      const mobile = document.getElementById('mobile');
+
+      if (!sess.value) {
+        markErr(sess, 'Please select a session');
+        first = first || sess;
+      }
+      if (!/^\d{10}$/.test(mobile.value.trim())) {
+        markErr(mobile, 'Mobile number must be exactly 10 digits');
+        first = first || mobile;
+      }
+      if (first) { e.preventDefault(); first.focus(); }
+    });
+  }
+</script>
+{% endblock %}

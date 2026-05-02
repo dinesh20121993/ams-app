@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% block title %}{{ session['session_name'] }} – AMS{% endblock %}
+{% block main_class %}wide-main{% endblock %}
+
+{% block content %}
+<div class="session-container">
+
+  <div class="detail-header">
+    <div>
+      <a href="{{ url_for('view_attendance') }}" class="back-link">&#8592; All Sessions</a>
+      <h1>{{ session['session_name'] }}</h1>
+      <p class="header-sub">
+        {{ session['date'] }}
+        {% if session['start_time'] %}
+          &nbsp;&middot;&nbsp; Started {{ session['start_time'][:16] }}
+        {% endif %}
+      </p>
+    </div>
+    <a href="{{ url_for('download_excel', session_id=session['id']) }}"
+       class="btn btn-primary download-btn">
+      &#8659; Download Excel
+    </a>
+  </div>
+
+  <!-- Present Students -->
+  <div class="section-heading">
+    <h2>Present <span class="section-count">{{ records | length }}</span></h2>
+    <p class="section-sub">
+      {{ records | length }} student{{ 's' if records | length != 1 }} attended
+    </p>
+  </div>
+
+  {% if records %}
+
+  <div class="search-wrapper">
+    <input type="text" id="search" class="search-input"
+           placeholder="Search by name, mobile, email or batch&hellip;"
+           autocomplete="off" />
+  </div>
+
+  <div class="table-wrapper">
+    <table class="data-table" id="present-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          <th>Mobile</th>
+          <th>Email</th>
+          <th>Batch</th>
+          <th>Time Marked</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rec in records %}
+        <tr>
+          <td class="col-num">{{ loop.index }}</td>
+          <td class="col-name">{{ rec['name'] }}</td>
+          <td class="col-mono">{{ rec['mobile'] }}</td>
+          <td>{{ rec['email'] if rec['email'] else '—' }}</td>
+          <td>{{ rec['batch_name'] if rec['batch_name'] else '—' }}</td>
+          <td class="col-mono col-time">{{ rec['timestamp'][:16] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="no-results" id="no-results" style="display:none;">
+    No students match your search.
+  </p>
+
+  {% else %}
+  <div class="empty-msg" style="padding:28px 0;">
+    <p>No attendance recorded for this session yet.</p>
+  </div>
+  {% endif %}
+
+  <!-- Absent Students -->
+  {% if absent %}
+  <div class="section-heading section-heading-absent">
+    <h2>Absent <span class="section-count section-count-absent">{{ absent | length }}</span></h2>
+    <p class="section-sub">
+      {{ absent | length }} registered student{{ 's' if absent | length != 1 }} did not attend
+    </p>
+  </div>
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          <th>Mobile</th>
+          <th>Batch</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for st in absent %}
+        <tr>
+          <td class="col-num">{{ loop.index }}</td>
+          <td class="col-name">{{ st['name'] }}</td>
+          <td class="col-mono">{{ st['mobile'] }}</td>
+          <td>{{ st['batch_name'] if st['batch_name'] else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% elif absent is defined %}
+  <div class="section-heading section-heading-absent">
+    <h2>Absent <span class="section-count section-count-absent">0</span></h2>
+    <p class="section-sub">All registered students attended — full house!</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const searchInput = document.getElementById('search');
+  if (searchInput) {
+    const noResults = document.getElementById('no-results');
+    searchInput.addEventListener('input', function () {
+      const q    = this.value.trim().toLowerCase();
+      const rows = document.querySelectorAll('#present-table tbody tr');
+      let n = 0;
+      rows.forEach(row => {
+        const match = !q || row.textContent.toLowerCase().includes(q);
+        row.style.display = match ? '' : 'none';
+        if (match) n++;
+      });
+      noResults.style.display = (n === 0 && q) ? '' : 'none';
+    });
+  }
+</script>
+{% endblock %}

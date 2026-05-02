@@ -1,0 +1,23 @@
+{% extends 'base_student.html' %}
+{% block title %}Registration Successful – AMS{% endblock %}
+
+{% block content %}
+<div class="card status-card status-success reg-success-card">
+
+  <div class="status-icon">&#10003;</div>
+
+  <h1>Registration Successful!</h1>
+
+  <p class="reg-success-welcome">Welcome, {{ name }}!</p>
+
+  <p class="status-message">
+    You have successfully registered for the Python class!
+  </p>
+
+  <div class="reg-success-email-box">
+    <span class="reg-success-email-label">Confirmation email sent to</span>
+    <span class="reg-success-email-addr">{{ email }}</span>
+  </div>
+
+</div>
+{% endblock %}

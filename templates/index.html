@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Attendance Management System{% endblock %}
+
+{% block content %}
+<div class="card dashboard-card">
+  <h1>Attendance Management System</h1>
+  <p class="subtitle">Trainer Dashboard</p>
+
+  <div class="dashboard-groups">
+
+    <div class="btn-group-section">
+      <p class="group-label">Session Management</p>
+      <div class="btn-group">
+        <a href="{{ url_for('start_session_form') }}"     class="btn btn-primary">&#9654; Start Session</a>
+        <a href="{{ url_for('view_attendance') }}"        class="btn btn-secondary">&#128203; View Attendance</a>
+        <a href="{{ url_for('manual_attendance_form') }}" class="btn btn-secondary">&#9998; Mark Attendance Manually</a>
+      </div>
+    </div>
+
+    <div class="btn-group-section">
+      <p class="group-label">Student Management</p>
+      <div class="btn-group">
+        <a href="{{ url_for('register_student_qr') }}" class="btn btn-secondary">&#128247; Register Student (QR)</a>
+        <a href="{{ url_for('add_student_form') }}"    class="btn btn-secondary">&#43; Add Student Manually</a>
+        <a href="{{ url_for('view_students') }}"       class="btn btn-secondary">&#128101; View Students</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
